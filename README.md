@@ -40,3 +40,8 @@ The report also raises the "Tags" from MalwareBazaar. These tags are associated 
 
 ## Contributing
 Please feel free changes to the script for additional certificate provider email addresses or methods of reporting. Half of the battle in reporting is finding where certificates should be submitted.
+
+# Why Report?
+Starting in 2018, the majority of certificates were no longer stolen, but they are issued to imposters. I call these "Imposter Certs" or "Sus Certs". Squiblydoo's research and findings can be read here: https://squiblydoo.blog/2023/05/12/certified-bad/, a scholarly article on this behavior can be found here: http://users.umiacs.umd.edu/~tdumitra/papers/WEIS-2018.pdf
+
+The TLDR is that multiple actors use the same certificate and reporting a certificate raises the cost of signing for all threat actors and it can impact multiple malware campaigns.
