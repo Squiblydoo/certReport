@@ -27,11 +27,7 @@ VMRay    Pikabot         malicious       https://www.vmray.com/analyses/_mb/89dc
 Please let us know if you have any questions.
 ------------------------
 Send the above message to the certificate provider. Here is where to send some:
-SSL.com: Should be sent using https://ssl.com/revoke
-Certum PL: ccp@certum.pl
-Digicert: Revoke@digicert.com
-Globalsign: report-abuse@globalsign.com
-Sectigo: signedmalwarealert@sectigo.com 
+This report should be sent to SSL.com: https://ssl.com/revoke
 ```
 
 This information is to be provided to the Certificate Issuer using the appropriate abuse report channels (such as email or website).
