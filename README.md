@@ -1,9 +1,9 @@
-# CertReport
-
-This script is intended to reduce the load of effort required to report authenticode certificates.
+# certReport
+Install using `pip install certReport`. <br><br>
+This tool is intended to reduce the load of effort required to report authenticode certificates.
 That is, if the file is on MalwareBazzar, a user can use the script to generate information to submit to the Certificate Issuer. For example:
 Calling the script and passing in a SHA256 like this:<br>
-`.\certReport 89dc50024836f9ad406504a3b7445d284e97ec5dafdd8f2741f496cac84ccda9`
+`certReport 89dc50024836f9ad406504a3b7445d284e97ec5dafdd8f2741f496cac84ccda9`
 
 Will print the following information to the console:
 
