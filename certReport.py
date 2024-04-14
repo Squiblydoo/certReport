@@ -65,12 +65,23 @@ def main():
         print("")
         print("Please let us know if you have any questions.")
         print("------------------------")
-        print('''Send the above message to the certificate provider. Here is where to send some:
-SSL.com: Should be sent using https://ssl.com/revoke
-Certum PL: ccp@certum.pl
-Digicert: Revoke@digicert.com
-Globalsign: report-abuse@globalsign.com
-Sectigo: signedmalwarealert@sectigo.com ''')
+        print('''Send the above message to the certificate provider. ''')
+        if "SSL" in issuer_cn:
+            print("This report should be sent to SSL.com: https://ssl.com/revoke")
+        elif "Certum" in issuer_cn:
+            print("This report should be sent to Certum PL: ccp@certum.pl")
+        elif "Digicert" in issuer_cn:
+            print("This report should be sent to Digicert: Revoke@digicert.com")
+        elif "GlobalSign" in issuer_cn:
+            print("This report should be sent to GlobalSign: report-abuse@globalsign.com")
+        elif "Sectigo" in issuer_cn:
+            print("This report should be sent to Sectigo: signedmalwarealert@sectigo.com")
+        elif "Entrust" in issuer_cn:
+            print("This report should be sent to Entrust: ecs.support@entrust.com")
+        else:
+            print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
+
+
         
     
             
