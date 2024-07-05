@@ -4,8 +4,6 @@ import json
 import argparse
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
 
 version = "2.0"
 
@@ -29,14 +27,38 @@ def query_malwarebazaar(filehash):
 
 def query_virustotal(filehash):
     try:
-        api_key = os.environ['VT_API_KEY']
+        api_key = os.getenv('VT_API_KEY')
+        if api_key == None:
+            raise KeyError
     except KeyError:
-        print("Please set your VirusTotal API key by running the script with the argument '--setup <API-KEY>.")
+        print('''Please set your VirusTotal API key by running the doing the following:
+        On Linux:
+        echo "VT_API_KEY=your_api_key_here" >> ~/.bashrc
+        source ~/.bashrc
+
+        On Windows:
+        setx VT_API_KEY "your_api_key"
+
+        On MacOS:
+        echo "export VT_API_KEY=your_api_key_here" >> ~/.zprofile
+        source ~/.zprofile
+        ''')
         exit()
     headers = {"accept": "application/json", "x-apikey": api_key}
     item_id = {"id": filehash}
     data_request = requests.get("https://www.virustotal.com/api/v3/files/" + filehash, headers=headers)
-    data_request.raise_for_status()
+    try:
+        data_request.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if data_request.status_code == 401:
+            print("API request was forbidden. Check to confirm your API key is correct.")
+            exit()
+        elif data_request.status_code == 404:
+            print("The file hash was not found in VirusTotal's database.")
+            exit()
+        else:
+            print("An error occurred while querying VirusTotal. Please try again later.")
+            exit()
     json_python_value = data_request.json()
     return json_python_value
 
@@ -154,24 +176,15 @@ def process_malwarebazaar_data(json_python_value, filehash):
 
     print_reporting_instructions(issuer_cn)
 
-def create_or_update_env_file(api_key):
-    with open('.env', 'w') as env_file:
-        env_file.write(f'VT_API_KEY={api_key}\n')
-    print("API key has been saved to .env file.")
 
 def main():
     parser = argparse.ArgumentParser(description = "Pull data pertaining to filehash by specifying hash associated with the malware and choosing a provider (defaults to MalwareBazaar).")
     parser.add_argument("-#","--hash", help="Specify hash of file to query.")
     parser.add_argument("-s", "--service", default="malwarebazaar", choices=["malwarebazaar", "VT", "virustotal"],
                         help="Select the service to query (default: malwarebazaar).")
-    parser.add_argument('--setup', metavar='API_KEY', type=str, help='Setup your API key by passing the API key as an argument.')
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
-
     args = parser.parse_args()
 
-    if args.setup:
-        create_or_update_env_file(args.setup)
-        exit()
     
     if not args.hash:
         parser.error("the following arguments are required: --hash")

@@ -41,13 +41,21 @@ This report should be sent to SSL.com: https://ssl.com/revoke
 This information is to be provided to the Certificate Issuer using the appropriate abuse report channels (such as email or website). The appropriate channel is provided at the end of the report (see above).
 
 ## Using VirusTotal
-In version 2, it became possible to query VirusTotal. To use VirusTotal first set up your API key using the following command.
+In version 2, it became possible to query VirusTotal. To use VirusTotal first set up your API key using the appropriate method for your operating system:
 ```
-certReport --setup <API_KEY_GOES_HERE>
-```
-This will create a .env file in your current working directory, this will allow certReport to retrieve the API key from this directory. (We don't have a better way to do this on all OS at the moment. Submit a PR if you have a good alternative.)
+        On Linux:
+        echo "VT_API_KEY=your_api_key_here" >> ~/.bashrc
+        source ~/.bashrc
 
-Once the API key is configured the following command will generate a report:
+        On Windows:
+        setx VT_API_KEY "your_api_key"
+
+        On MacOS:
+        echo "export VT_API_KEY=your_api_key_here" >> ~/.zprofile
+        source ~/.zprofile
+```
+
+Once the API key is configured as an environment variable the following command will generate a report:
 ```
 certReport --hash 89dc50024836f9ad406504a3b7445d284e97ec5dafdd8f2741f496cac84ccda9 --service virustotal
 ```
