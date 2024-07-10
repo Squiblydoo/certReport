@@ -1,0 +1,17 @@
+Changelog
+2.0.2
+-   Fixed bugs in regards to checking if attributes of the API results exist.
+    - Specifically, checking for values like popular threat labels, popular threat names, popular threat categories, crowdsourced IDS rules, were not done appropriately.
+-   Fixed bug where report relied on the x509 attribute, which was the wrong attribute to rely on.
+-   Improvements:
+    -   Made it possible to print a report without a certificate being attached to the file.
+    -   Cleaned up printing of IDS rules. Previously, it printed them as a comma separated list, but now it lists them as bullet points.
+
+2.0.1
+-   Modified where the API key was stored. In 1.0.1, we rely on it in the environment variable.
+
+2.0.0
+-   Added capability for generating report using VirusTotal API.
+
+1.0.0
+-   Initial Release
