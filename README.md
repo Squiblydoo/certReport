@@ -6,6 +6,11 @@ As of version 2, we have added support to use VirusTotal API. In order to allow 
 
 The default behavior of cert report is to query MalwareBazaar, which does not require an API key.
 
+## Installing
+Use pip! `pip install certReport` or `pip3 install certReport`
+
+## Usage
+
 **Note: In version 2, it is required to provide the `--hash` switch**
  Here is an example:
 Calling the script and passing in a SHA256 like this:<br>
