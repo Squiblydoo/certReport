@@ -3,8 +3,9 @@
 This tool is intended to reduce the load of effort required to report authenticode certificates. It is intended to take the smallest amount of effort from the reporter, but provide the certificate authority with most the information they need to make a decision. When possible, it is recommended to augment the report with your own findings to help the certificate provider know what suspicious indicators you found.
 
 As of version 2, we have added support to use VirusTotal API. In order to allow for VirusTotal API, we have added additional functions. 
-
 The default behavior of cert report is to query MalwareBazaar, which does not require an API key.
+
+In version 3, we have added a SQLite database which stores information about the reports. This can be used for personal reference but also augments the report. See information in the database section below for more information!
 
 ## Installing
 Use pip! `pip install certReport` or `pip3 install certReport`
@@ -30,7 +31,9 @@ Serial Number: 2941d5f8758501f9dbc4ba158058c3b5
 SHA256 Thumbprint: a982917ba6de9588f0f7ed554223d292524e832c1621acae9ad11c0573df54a5
 Valid From: 2024-01-25T16:51:40Z
 Valid Until: 2025-01-24T16:51:40Z
+
 The malware was tagged as exe, Pikabot and signed.
+
 MalwareBazaar submitted the file to multiple public sandboxes, the links to the sandbox results are below:
 Sandbox	 / Malware Family	 /  Verdict	 / Analysis URL
 Intezer 	 None 	 unknown 	 https://analyze.intezer.com/analyses/c4915ef4-198f-4aba-81ed-81b29cd4dce6?utm_source=MalwareBazaar 
@@ -91,7 +94,9 @@ The malware was classified as trojan by 30 detection engines.
 The file was flagged as pikabot by 23 detection engines, zusy by 6 detection engines and gdfvt by 2 detection engines
 
 This file was found during our investigation and had the following suspicious indicators:
- - The file triggered the following high IDS rules: ET CNC Feodo Tracker Reported CnC Server group 1, ET CNC Feodo Tracker Reported CnC Server group 1, ET CNC Feodo Tracker Reported CnC Server group 2, ET CNC Feodo Tracker Reported CnC Server group 4, ET CNC Feodo Tracker Reported CnC Server group 5, ET CNC Feodo Tracker Reported CnC Server group 6, ET CNC Feodo Tracker Reported CnC Server group 8, ET CNC Feodo Tracker Reported CnC Server group 10, ET CNC Feodo Tracker Reported CnC Server group 11, ET CNC Feodo Tracker Reported CnC Server group 13, ET CNC Feodo Tracker Reported CnC Server group 14, ET CNC Feodo Tracker Reported CnC Server group 15 and ET CNC Feodo Tracker Reported CnC Server group 16
+ - The file triggered the following high IDS rules:
+	- ET CNC Feodo Tracker Reported CnC Server group 1
+	- ET CNC Feodo Tracker Reported CnC Server group 2
 
 Please let us know if you have any questions.
 ------------------------
@@ -101,8 +106,22 @@ This report should be sent to SSL.com: https://ssl.com/revoke
 
 As stated previously, it is recommended to add additional bulletpoints near the end of the report. Additional bulletpoints should include findings from your own investigation. These details can help provide decision support for the certificate provider.
 
+## Database
+In version 3, a database was stored with information about all certs processed with certReport. This database contains most of the details which occur in the report. When running the command the user can use the option `-t` and supply a malware family. If the user does so, the report will add that user supplied name to the database and will check the database for any other instances of that malware name; when there are matches, it will augment the report with information about how many times that malware has been reported. For example, it could print a message like the following near the bottom of the report:
+
+```
+We have reported this same malware to SSL.com 2 times. We have reported the malware to other providers 10 times.
+```
+
+As of the current version, the database needs to be viewed or managed with a SQLite database viewer. It cannot be viewed or managed within the program.
+
+NOTE: If the user runs the application with the same hash, the first instance of the hash will be removed from the database and replaced with the new information.
+
+### Where is it?
+The database is created in a folder in the user's home directory. The folder will be named "certReport" and the database will be named "certReport.db".
+
 ## Contributing
-Please feel free changes to the script for additional certificate provider email addresses or methods of reporting. Half of the battle in reporting is finding where certificates should be submitted.
+Please feel free to suggest changes to the script for additional certificate provider email addresses or methods of reporting. Half of the battle in reporting is finding where certificates should be submitted.
 
 # Why Report?
 Starting in 2018, the majority of certificates were no longer stolen, but they are issued to impostors (this case is argued in a scholarly article here: http://users.umiacs.umd.edu/~tdumitra/papers/WEIS-2018.pdf). I call these "Impostor Certs". 
