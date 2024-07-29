@@ -4,7 +4,7 @@ import json
 import argparse
 import os
 import sqlite3
-import databaseFunctions.databaseManager as db_manager
+import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
 version = "3.0.0"
@@ -175,15 +175,16 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
                 print("   - " + rule)
 
     if signature_info:
-        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
         if user_supplied_tag:
             data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
             combined_non_matching_values = 0
 
             for entry in data:
                 if entry[0] == issuer_simple_name:
-                    print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
+                    if entry[1] > 1:
+                        print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
                 else:
                     combined_non_matching_values += entry[1]
 
@@ -236,16 +237,17 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag):
             print(f"{key} \t {value['family_name']} \t {value['verdict']} \t {value['analysis_url']} ")
         elif key == 'VMRay':
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
-
-    db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
+    
     issuer_simple_name = get_issuer_simple_name(issuer_cn)
+    db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
     if user_supplied_tag:
         data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
         combined_non_matching_values = 0
 
         for entry in data:
             if entry[0] == issuer_simple_name:
-                print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
+                if entry[1] > 1:
+                    print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
             else:
                 combined_non_matching_values += entry[1]
 

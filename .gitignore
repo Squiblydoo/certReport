@@ -6,3 +6,4 @@ src/certReport/sample_request.json
 .vscode/launch.json
 src/certReport/databaseFunctions/__pycache__/databaseManager.cpython-310.pyc
 src/certReport/databaseFunctions/__pycache__/__init__.cpython-310.pyc
+src/certReport/__pycache__/__init__.cpython-310.pyc
