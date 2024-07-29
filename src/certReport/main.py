@@ -3,9 +3,13 @@ import requests
 import json
 import argparse
 import os
+import sqlite3
+import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "2.0.2"
+version = "3.0.0"
+db, cursor = db_manager.connect_to_db()
+
 
 def create_tag_string(tags):
     if len(tags) == 0:
@@ -62,17 +66,34 @@ def query_virustotal(filehash):
     json_python_value = data_request.json()
     return json_python_value
 
+def get_issuer_simple_name(issuer_cn):
+    if "SSL" in issuer_cn:
+        return "SSL.com"
+    elif "Certum" in issuer_cn:
+        return "Certum"
+    elif "DigiCert" in issuer_cn:
+        return "DigiCert"
+    elif "GlobalSign" in issuer_cn:
+        return "GlobalSign"
+    elif "Sectigo" in issuer_cn:
+        return "Sectigo"
+    elif "Entrust" in issuer_cn:
+        return "Entrust"
+    else:
+        return "Unknown"
+
 def print_reporting_instructions(issuer_cn):
     print("")
     print("Please let us know if you have any questions.")
     print("------------------------")
     print('''Send the above message to the certificate provider. ''')
+
     if "SSL" in issuer_cn:
         print("This report should be sent to SSL.com: https://ssl.com/revoke")
     elif "Certum" in issuer_cn:
         print("This report should be sent to Certum PL: https://problemreport.certum.pl/")
-    elif "Digicert" in issuer_cn:
-        print("This report should be sent to Digicert: Revoke@digicert.com")
+    elif "DigiCert" in issuer_cn:
+        print("This report should be sent to DigiCert: Revoke@digicert.com")
     elif "GlobalSign" in issuer_cn:
         print("This report should be sent to GlobalSign: report-abuse@globalsign.com")
     elif "Sectigo" in issuer_cn:
@@ -82,7 +103,7 @@ def print_reporting_instructions(issuer_cn):
     else:
         print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
 
-def process_virustotal_data(json_python_value, filehash):
+def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
     signature_info = json_python_value.get("data", {}).get("attributes", {}).get("signature_info")
     if signature_info:
         signers = json_python_value["data"]["attributes"]["signature_info"]["signers"]
@@ -111,11 +132,17 @@ def process_virustotal_data(json_python_value, filehash):
                 "Thumbprint: " + thumbprint + "\n"
                 "Certificate Status: " + cert_status + "\n"
                 "Valid From: " + valid_from + "\n"
-                "Valid Until: " + valid_to 
+                "Valid Until: " + valid_to + "\n\n"
+                "The malware was tagged as " + tag_string + "."
+            "\n" 
         )
+        
+    issuer_simple_name = get_issuer_simple_name(issuer_cn)
+    if user_supplied_tag:
+        print("This malware is known as " + user_supplied_tag + ".\n")
+        tag_string += ", " + user_supplied_tag
+
     print(
-            "The malware was tagged as a " + tag_string + "."
-            "\n"
             "The malware was detected by " + str(stats["malicious"]) + " out of " + str(stats["harmless"] + stats["failure"] + stats["malicious"] + stats["suspicious"] + stats["undetected"]) + " antivirus engines."
             )
     popular_threat_classification = json_python_value.get("data", {}).get("attributes", {}).get("popular_threat_classification")
@@ -146,10 +173,29 @@ def process_virustotal_data(json_python_value, filehash):
             print(" - The file triggered the following high IDS rules: " )
             for rule in high_ids_rules:
                 print("   - " + rule)
+
+    if signature_info:
+        issuer_simple_name = get_issuer_simple_name(issuer_cn)
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
+        if user_supplied_tag:
+            data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
+            combined_non_matching_values = 0
+
+            for entry in data:
+                if entry[0] == issuer_simple_name:
+                    if entry[1] > 1:
+                        print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
+                else:
+                    combined_non_matching_values += entry[1]
+
+            if combined_non_matching_values > 0:
+                print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
+        
     if signature_info:
         print_reporting_instructions(issuer_cn)
+        
 
-def process_malwarebazaar_data(json_python_value, filehash):
+def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag):
     subject_cn = json_python_value["data"][0]["code_sign"][0]["subject_cn"]
     issuer_cn = json_python_value["data"][0]["code_sign"][0]["issuer_cn"]
     serial_number = json_python_value["data"][0]["code_sign"][0]["serial_number"]
@@ -170,10 +216,14 @@ def process_malwarebazaar_data(json_python_value, filehash):
             "Serial Number: " + serial_number + "\n"
             "SHA256 Thumbprint: " + thumbprint + "\n"
             "Valid From: " + valid_from + "\n"
-            "Valid Until: " + valid_until +
+            "Valid Until: " + valid_until + "\n"
+            "The malware was tagged as " + tag_string + ".\n"
             "\n"
-            "The malware was tagged as " + tag_string + "."
-            "\n"
+            )
+    if user_supplied_tag:
+        print("This malware is known as " + user_supplied_tag + ".\n")
+        tag_string += ", " + user_supplied_tag
+    print(
             "MalwareBazaar submitted the file to multiple public sandboxes, the links to the sandbox results are below:\n"
             "Sandbox\t / Malware Family\t /  Verdict\t / Analysis URL"
             )
@@ -187,28 +237,47 @@ def process_malwarebazaar_data(json_python_value, filehash):
             print(f"{key} \t {value['family_name']} \t {value['verdict']} \t {value['analysis_url']} ")
         elif key == 'VMRay':
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
+    
+    issuer_simple_name = get_issuer_simple_name(issuer_cn)
+    db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
+    if user_supplied_tag:
+        data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
+        combined_non_matching_values = 0
+
+        for entry in data:
+            if entry[0] == issuer_simple_name:
+                if entry[1] > 1:
+                    print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
+            else:
+                combined_non_matching_values += entry[1]
+
+        if combined_non_matching_values > 0:
+            print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
 
     print_reporting_instructions(issuer_cn)
+    
 
 
 def main():
     parser = argparse.ArgumentParser(description = "Pull data pertaining to filehash by specifying hash associated with the malware and choosing a provider (defaults to MalwareBazaar).")
     parser.add_argument("-#","--hash", help="Specify hash of file to query.")
-    parser.add_argument("-s", "--service", default="malwarebazaar", choices=["malwarebazaar", "VT", "virustotal"],
+    parser.add_argument("-s", "--service", default="malwarebazaar", choices=["MB", "malwarebazaar", "VT", "virustotal"],
                         help="Select the service to query (default: malwarebazaar).")
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument('-t', '--tag', help="Tag the malware as a specific family")
     args = parser.parse_args()
 
-    
     if not args.hash:
         parser.error("the following arguments are required: --hash")
 
     if args.service == "virustotal" or args.service == "VT":
         json_python_value = query_virustotal(args.hash)
-        process_virustotal_data(json_python_value, args.hash)
+        process_virustotal_data(json_python_value, args.hash, args.tag)
     else:  # Default to MalwareBazaar
         json_python_value = query_malwarebazaar(args.hash)
-        process_malwarebazaar_data(json_python_value, args.hash)
+        process_malwarebazaar_data(json_python_value, args.hash, args.tag)
+
+    db_manager.close_db(db)
             
 if __name__=="__main__":
     main()
