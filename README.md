@@ -12,7 +12,7 @@ Use pip! `pip install certReport` or `pip3 install certReport`
 
 ## Usage
 
-**Note: In version 2, it is required to provide the `--hash` switch**
+**Note: In version 2, it is required to provide the `--hash` (or `-#`) switch**
  Here is an example:
 Calling the script and passing in a SHA256 like this:<br>
 `certReport --hash 89dc50024836f9ad406504a3b7445d284e97ec5dafdd8f2741f496cac84ccda9`
@@ -52,7 +52,7 @@ This information is to be provided to the Certificate Issuer using the appropria
 In version 2, it became possible to query VirusTotal. To use VirusTotal first set up your API key using the appropriate method for your operating system:
 ```
         On Linux:
-        echo "VT_API_KEY=your_api_key_here" >> ~/.bashrc
+        echo "export VT_API_KEY=your_api_key_here" >> ~/.bashrc
         source ~/.bashrc
 
         On Windows:
