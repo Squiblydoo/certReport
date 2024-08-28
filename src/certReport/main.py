@@ -163,8 +163,13 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
     print("\nThis file was found during our investigation and had the following suspicious indicators:")
     # Additional evidence of malicious behavior can be found by HIGH IDS rules. Will consider other data later.
     high_ids_rules = []
+    critical_high_sigma_rules = []
 
     crowdsourced_ids_results = json_python_value.get("data", {}).get("attributes", {}).get("crowdsourced_ids_results")
+    sigma_analysis_results = json_python_value.get("data", {}).get("attributes", {}).get("sigma_analysis_results")
+    crowdsourced_yara_results = json_python_value.get("data", {}).get("attributes", {}).get("crowdsourced_yara_results")
+    malware_config = json_python_value.get("data", {}).get("attributes", {}).get("malware_config")
+    
     if crowdsourced_ids_results:
         for rule in json_python_value["data"]["attributes"]["crowdsourced_ids_results"]:
             if rule["alert_severity"] == "high":
@@ -173,6 +178,25 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
             print(" - The file triggered the following high IDS rules: " )
             for rule in high_ids_rules:
                 print("   - " + rule)
+
+    if sigma_analysis_results:
+        for rule in json_python_value["data"]["attributes"]["sigma_analysis_results"]:
+            if rule["rule_level"] in ("critical", "high"):
+                critical_high_sigma_rules.append(rule["rule_title"])
+        if  len(critical_high_sigma_rules) > 0:
+            print(" - The file triggered the following critical or high Sigma rules: " )
+            for rule in critical_high_sigma_rules:
+                print("   - " + rule)
+
+    if crowdsourced_yara_results:
+        print(" - The file triggered the following YARA rules: " )
+        for rule in json_python_value["data"]["attributes"]["crowdsourced_yara_results"]:
+            print("   - " + rule["rule_name"] + " from source " + rule["source"])
+
+    if malware_config:
+        print(" - VirusTotal extracted configurations for the following malware families: " )
+        for family in json_python_value["data"]["attributes"]["malware_config"]["families"]:
+            print("   - " + family["family"])
 
     if signature_info:
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
