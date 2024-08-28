@@ -1,4 +1,10 @@
 Changelog
+3.1.0
+-    Merged branch to add Sigma/Yara/Config information from VirusTotal API.
+
+3.0.0
+-    Added local database to store certificate information.
+
 2.0.2
 -   Fixed bugs in regards to checking if attributes of the API results exist.
     - Specifically, checking for values like popular threat labels, popular threat names, popular threat categories, crowdsourced IDS rules, were not done appropriately.
