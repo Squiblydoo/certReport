@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.0.0"
+version = "3.1.0"
 db, cursor = db_manager.connect_to_db()
 
 
@@ -123,7 +123,7 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
     
     if signature_info:
         print("\n---------------------------------\nGreetings,\n "
-            "We identified a malware signed with a " + issuer_cn + " certificate. \n"
+            "We identified a malware signed with a" + issuer_cn + " certificate. \n"
             "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
             "Here are the signature details:\n"\
                 "Name: " + subject_cn + "\n"
