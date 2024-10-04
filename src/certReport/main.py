@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.1.0"
+version = "3.1.1"
 db, cursor = db_manager.connect_to_db()
 
 
@@ -103,7 +103,7 @@ def print_reporting_instructions(issuer_cn):
     else:
         print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
 
-def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
+def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_report):
     signature_info = json_python_value.get("data", {}).get("attributes", {}).get("signature_info")
     if signature_info:
         signers = json_python_value["data"]["attributes"]["signature_info"]["signers"]
@@ -120,24 +120,38 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
     stats = json_python_value["data"]["attributes"]["last_analysis_stats"]
     tags = json_python_value["data"]["attributes"]["tags"]
     tag_string = create_tag_string(tags)
-    
-    if signature_info:
-        print("\n---------------------------------\nGreetings,\n "
-            "We identified a malware signed with a" + issuer_cn + " certificate. \n"
-            "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
-            "Here are the signature details:\n"\
-                "Name: " + subject_cn + "\n"
-                "Issuer: " + issuer_cn + "\n"
-                "Serial Number: " + serial_number + "\n"
-                "Thumbprint: " + thumbprint + "\n"
-                "Certificate Status: " + cert_status + "\n"
-                "Valid From: " + valid_from + "\n"
-                "Valid Until: " + valid_to + "\n\n"
-                "The malware was tagged as " + tag_string + "."
-            "\n" 
-        )
-        
+
     issuer_simple_name = get_issuer_simple_name(issuer_cn)
+    if issuer_simple_name == "Certum":
+        min_report = True # Certum reports are always thin reports due to report length requirements.
+    
+    if min_report:
+        if signature_info:
+            print("\n---------------------------------\nGreetings,\n "
+                "The following malware is signed by a " + issuer_simple_name + " subscriber: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
+                    "Name: " + subject_cn + "\n"
+                    "Issuer: " + issuer_cn + "\n"
+                    "Serial Number: " + serial_number + "\n"
+                    "Thumbprint: " + thumbprint + "\n"
+                    "Status: " + cert_status + "\n"
+            )
+
+    else:    
+        if signature_info:
+            print("\n---------------------------------\nGreetings,\n "
+                "We identified a malware signed with a" + issuer_cn + " certificate. \n"
+                "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
+                "Here are the signature details:\n"\
+                    "Name: " + subject_cn + "\n"
+                    "Issuer: " + issuer_cn + "\n"
+                    "Serial Number: " + serial_number + "\n"
+                    "Thumbprint: " + thumbprint + "\n"
+                    "Certificate Status: " + cert_status + "\n"
+                    "Valid From: " + valid_from + "\n"
+                    "Valid Until: " + valid_to + "\n"                    
+                "\n" 
+            )
+            
     if user_supplied_tag:
         print("This malware is known as " + user_supplied_tag + ".\n")
         tag_string += ", " + user_supplied_tag
@@ -160,7 +174,7 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
             threat_name_string = create_tag_string(threat_name_list)
             print("The file was flagged as " + threat_name_string)
 
-    print("\nThis file was found during our investigation and had the following suspicious indicators:")
+    
     # Additional evidence of malicious behavior can be found by HIGH IDS rules. Will consider other data later.
     high_ids_rules = []
     critical_high_sigma_rules = []
@@ -170,13 +184,15 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
     crowdsourced_yara_results = json_python_value.get("data", {}).get("attributes", {}).get("crowdsourced_yara_results")
     malware_config = json_python_value.get("data", {}).get("attributes", {}).get("malware_config")
     
+    indicator_array = []
     if crowdsourced_ids_results:
         for rule in json_python_value["data"]["attributes"]["crowdsourced_ids_results"]:
             if rule["alert_severity"] == "high":
                 high_ids_rules.append(rule["rule_msg"])
         if  len(high_ids_rules) > 0:
-            print(" - The file triggered the following high IDS rules: " )
+            indicator_array.append(" - The file triggered the following high IDS rules: " )
             for rule in high_ids_rules:
+                indicator_array.append("   - " + rule)
                 print("   - " + rule)
 
     if sigma_analysis_results:
@@ -184,19 +200,26 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
             if rule["rule_level"] in ("critical", "high"):
                 critical_high_sigma_rules.append(rule["rule_title"])
         if  len(critical_high_sigma_rules) > 0:
-            print(" - The file triggered the following critical or high Sigma rules: " )
+            indicator_array.append(" - The file triggered the following critical or high Sigma rules: " )
             for rule in critical_high_sigma_rules:
+                indicator_array.append("   - " + rule)
                 print("   - " + rule)
 
     if crowdsourced_yara_results:
-        print(" - The file triggered the following YARA rules: " )
+        indicator_array.append(" - The file triggered the following YARA rules: " )
         for rule in json_python_value["data"]["attributes"]["crowdsourced_yara_results"]:
-            print("   - " + rule["rule_name"] + " from source " + rule["source"])
+            indicator_array.append("   - " + rule["rule_name"] + " from source " + rule["source"])
+            #print("   - " + rule["rule_name"] + " from source " + rule["source"])
 
     if malware_config:
-        print(" - VirusTotal extracted configurations for the following malware families: " )
+        indicator_array.append(" - VirusTotal extracted configurations for the following malware families: " )
         for family in json_python_value["data"]["attributes"]["malware_config"]["families"]:
-            print("   - " + family["family"])
+            indicator_array.append("   - " + family["family"])
+            #print("   - " + family["family"])
+    if indicator_array:
+        print("\nThis file was found during our investigation and had the following suspicious indicators:")
+        for indicator in indicator_array:
+            print(indicator)
 
     if signature_info:
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
@@ -219,31 +242,51 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag):
         print_reporting_instructions(issuer_cn)
         
 
-def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag):
-    subject_cn = json_python_value["data"][0]["code_sign"][0]["subject_cn"]
-    issuer_cn = json_python_value["data"][0]["code_sign"][0]["issuer_cn"]
-    serial_number = json_python_value["data"][0]["code_sign"][0]["serial_number"]
-    thumbprint = json_python_value["data"][0]["code_sign"][0]["thumbprint"]
-    valid_from = json_python_value["data"][0]["code_sign"][0]["valid_from"]
-    valid_until = json_python_value["data"][0]["code_sign"][0]["valid_to"]
+def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, min_report):
+    try:
+        subject_cn = json_python_value["data"][0]["code_sign"][0]["subject_cn"]
+        issuer_cn = json_python_value["data"][0]["code_sign"][0]["issuer_cn"]
+        serial_number = json_python_value["data"][0]["code_sign"][0]["serial_number"]
+        thumbprint = json_python_value["data"][0]["code_sign"][0]["thumbprint"]
+        valid_from = json_python_value["data"][0]["code_sign"][0]["valid_from"]
+        valid_until = json_python_value["data"][0]["code_sign"][0]["valid_to"]
 
-    tags = json_python_value["data"][0]["tags"]
-    tag_string = create_tag_string(tags)
-    vendor_intel_dict = json_python_value["data"][0]["vendor_intel"]
+        tags = json_python_value["data"][0]["tags"]
+        tag_string = create_tag_string(tags)
+        vendor_intel_dict = json_python_value["data"][0]["vendor_intel"]
 
-    print("\n---------------------------------\nGreetings,\n "
-        "We identified a malware signed with a " + issuer_cn + " certificate. \n" 
-        "The malware sample is available on MalwareBazaar here: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
-        "Here are the signature details:\n"\
-            "Name: " + subject_cn + "\n"
-            "Issuer: " + issuer_cn + "\n"
-            "Serial Number: " + serial_number + "\n"
-            "SHA256 Thumbprint: " + thumbprint + "\n"
-            "Valid From: " + valid_from + "\n"
-            "Valid Until: " + valid_until + "\n"
-            "The malware was tagged as " + tag_string + ".\n"
-            "\n"
-            )
+
+    except KeyError:
+        print("No signature could be found associated with this hash or the file does not exist.")
+        exit()
+    issuer_simple_name = get_issuer_simple_name(issuer_cn)
+    if issuer_simple_name == "Certum":
+        min_report = True # Certum reports are always thin reports due to report length requirements.
+
+    if min_report:
+        print("\n---------------------------------\nGreetings,\n "
+            "We identified a malware signed with a " + issuer_cn + " certificate: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
+            "Here are the signature details:\n"\
+                "Name: " + subject_cn + "\n"
+                "Issuer: " + issuer_cn + "\n"
+                "Serial Number: " + serial_number + "\n"
+                "SHA256 Thumbprint: " + thumbprint + "\n"
+                "\n"
+                )
+    else:
+        print("\n---------------------------------\nGreetings,\n "
+            "We identified a malware signed with a " + issuer_cn + " certificate. \n" 
+            "The malware sample is available on MalwareBazaar here: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
+            "Here are the signature details:\n"\
+                "Name: " + subject_cn + "\n"
+                "Issuer: " + issuer_cn + "\n"
+                "Serial Number: " + serial_number + "\n"
+                "SHA256 Thumbprint: " + thumbprint + "\n"
+                "Valid From: " + valid_from + "\n"
+                "Valid Until: " + valid_until + "\n"
+                "The malware was tagged as " + tag_string + ".\n"
+                "\n"
+                )
     if user_supplied_tag:
         print("This malware is known as " + user_supplied_tag + ".\n")
         tag_string += ", " + user_supplied_tag
@@ -262,7 +305,6 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag):
         elif key == 'VMRay':
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
     
-    issuer_simple_name = get_issuer_simple_name(issuer_cn)
     db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
     if user_supplied_tag:
         data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
@@ -289,6 +331,7 @@ def main():
                         help="Select the service to query (default: malwarebazaar).")
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     parser.add_argument('-t', '--tag', help="Tag the malware as a specific family")
+    parser.add_argument('-m', '--min', help="Prints a thin report with only the most important information", default=False ,action="store_true")
     args = parser.parse_args()
 
     if not args.hash:
@@ -296,10 +339,10 @@ def main():
 
     if args.service == "virustotal" or args.service == "VT":
         json_python_value = query_virustotal(args.hash)
-        process_virustotal_data(json_python_value, args.hash, args.tag)
+        process_virustotal_data(json_python_value, args.hash, args.tag, args.min)
     else:  # Default to MalwareBazaar
         json_python_value = query_malwarebazaar(args.hash)
-        process_malwarebazaar_data(json_python_value, args.hash, args.tag)
+        process_malwarebazaar_data(json_python_value, args.hash, args.tag, args.min)
 
     db_manager.close_db(db)
             
