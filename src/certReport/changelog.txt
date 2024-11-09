@@ -1,4 +1,9 @@
 Changelog
+3.1.2
+-   Replaced Entrust email with URL
+-   Restored ability to print report without a certificate. This had been broken at some point.
+    -   Extended capability to print report from MalwareBazaar without file being signed.
+
 3.1.1
 -   Add better error handling for MalwareBazaar
 -   Statement regarding suspicious indicators does not trigger without indicators being listed.
