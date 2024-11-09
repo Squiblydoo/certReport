@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.1.1"
+version = "3.1.2"
 db, cursor = db_manager.connect_to_db()
 
 
@@ -99,7 +99,7 @@ def print_reporting_instructions(issuer_cn):
     elif "Sectigo" in issuer_cn:
         print("This report should be sent to Sectigo: signedmalwarealert@sectigo.com")
     elif "Entrust" in issuer_cn:
-        print("This report should be sent to Entrust: ecs.support@entrust.com")
+        print("This report should be sent to Entrust: https://www.entrust.com/support/certificate-solutions/report-a-problem#form-block")
     else:
         print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
 
@@ -117,40 +117,43 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         valid_from = signer_details["valid from"]
         valid_to = signer_details["valid to"]
 
+        issuer_simple_name = get_issuer_simple_name(issuer_cn)
+        if issuer_simple_name == "Certum":
+            min_report = True # Certum reports are always thin reports due to report length requirements.
+        
+        if min_report:
+            if signature_info:
+                print("\n---------------------------------\nGreetings,\n "
+                    "The following malware is signed by a " + issuer_simple_name + " subscriber: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
+                        "Name: " + subject_cn + "\n"
+                        "Issuer: " + issuer_cn + "\n"
+                        "Serial Number: " + serial_number + "\n"
+                        "Thumbprint: " + thumbprint + "\n"
+                        "Status: " + cert_status + "\n"
+                )
+
+        else:    
+            if signature_info:
+                print("\n---------------------------------\nGreetings,\n "
+                    "We identified a malware signed with a" + issuer_cn + " certificate. \n"
+                    "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
+                    "Here are the signature details:\n"\
+                        "Name: " + subject_cn + "\n"
+                        "Issuer: " + issuer_cn + "\n"
+                        "Serial Number: " + serial_number + "\n"
+                        "Thumbprint: " + thumbprint + "\n"
+                        "Certificate Status: " + cert_status + "\n"
+                        "Valid From: " + valid_from + "\n"
+                        "Valid Until: " + valid_to + "\n"                    
+                )
+    if not signature_info:
+        print("This file is not signed. Only printing report.\n---------------------------------")
+
+
     stats = json_python_value["data"]["attributes"]["last_analysis_stats"]
     tags = json_python_value["data"]["attributes"]["tags"]
     tag_string = create_tag_string(tags)
 
-    issuer_simple_name = get_issuer_simple_name(issuer_cn)
-    if issuer_simple_name == "Certum":
-        min_report = True # Certum reports are always thin reports due to report length requirements.
-    
-    if min_report:
-        if signature_info:
-            print("\n---------------------------------\nGreetings,\n "
-                "The following malware is signed by a " + issuer_simple_name + " subscriber: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
-                    "Name: " + subject_cn + "\n"
-                    "Issuer: " + issuer_cn + "\n"
-                    "Serial Number: " + serial_number + "\n"
-                    "Thumbprint: " + thumbprint + "\n"
-                    "Status: " + cert_status + "\n"
-            )
-
-    else:    
-        if signature_info:
-            print("\n---------------------------------\nGreetings,\n "
-                "We identified a malware signed with a" + issuer_cn + " certificate. \n"
-                "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"\
-                "Here are the signature details:\n"\
-                    "Name: " + subject_cn + "\n"
-                    "Issuer: " + issuer_cn + "\n"
-                    "Serial Number: " + serial_number + "\n"
-                    "Thumbprint: " + thumbprint + "\n"
-                    "Certificate Status: " + cert_status + "\n"
-                    "Valid From: " + valid_from + "\n"
-                    "Valid Until: " + valid_to + "\n"                    
-                "\n" 
-            )
             
     if user_supplied_tag:
         print("This malware is known as " + user_supplied_tag + ".\n")
@@ -243,7 +246,7 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         
 
 def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, min_report):
-    try:
+    if json_python_value["data"][0]["code_sign"]:
         subject_cn = json_python_value["data"][0]["code_sign"][0]["subject_cn"]
         issuer_cn = json_python_value["data"][0]["code_sign"][0]["issuer_cn"]
         serial_number = json_python_value["data"][0]["code_sign"][0]["serial_number"]
@@ -253,48 +256,44 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
 
         tags = json_python_value["data"][0]["tags"]
         tag_string = create_tag_string(tags)
-        vendor_intel_dict = json_python_value["data"][0]["vendor_intel"]
 
+        issuer_simple_name = get_issuer_simple_name(issuer_cn)
+        if issuer_simple_name == "Certum":
+            min_report = True # Certum reports are always thin reports due to report length requirements.
 
-    except KeyError:
-        print("No signature could be found associated with this hash or the file does not exist.")
-        exit()
-    issuer_simple_name = get_issuer_simple_name(issuer_cn)
-    if issuer_simple_name == "Certum":
-        min_report = True # Certum reports are always thin reports due to report length requirements.
-
-    if min_report:
-        print("\n---------------------------------\nGreetings,\n "
-            "We identified a malware signed with a " + issuer_cn + " certificate: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
-            "Here are the signature details:\n"\
-                "Name: " + subject_cn + "\n"
-                "Issuer: " + issuer_cn + "\n"
-                "Serial Number: " + serial_number + "\n"
-                "SHA256 Thumbprint: " + thumbprint + "\n"
-                "\n"
-                )
-    else:
-        print("\n---------------------------------\nGreetings,\n "
-            "We identified a malware signed with a " + issuer_cn + " certificate. \n" 
-            "The malware sample is available on MalwareBazaar here: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
-            "Here are the signature details:\n"\
-                "Name: " + subject_cn + "\n"
-                "Issuer: " + issuer_cn + "\n"
-                "Serial Number: " + serial_number + "\n"
-                "SHA256 Thumbprint: " + thumbprint + "\n"
-                "Valid From: " + valid_from + "\n"
-                "Valid Until: " + valid_until + "\n"
-                "The malware was tagged as " + tag_string + ".\n"
-                "\n"
-                )
-    if user_supplied_tag:
-        print("This malware is known as " + user_supplied_tag + ".\n")
-        tag_string += ", " + user_supplied_tag
-    print(
-            "MalwareBazaar submitted the file to multiple public sandboxes, the links to the sandbox results are below:\n"
-            "Sandbox\t / Malware Family\t /  Verdict\t / Analysis URL"
-            )
-            
+        if min_report:
+            print("\n---------------------------------\nGreetings,\n "
+                "We identified a malware signed with a " + issuer_cn + " certificate: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
+                "Here are the signature details:\n"\
+                    "Name: " + subject_cn + "\n"
+                    "Issuer: " + issuer_cn + "\n"
+                    "Serial Number: " + serial_number + "\n"
+                    "SHA256 Thumbprint: " + thumbprint + "\n"
+                    "\n"
+                    )
+        else:
+            print("\n---------------------------------\nGreetings,\n "
+                "We identified a malware signed with a " + issuer_cn + " certificate. \n" 
+                "The malware sample is available on MalwareBazaar here: https://bazaar.abuse.ch/sample/" + filehash + "\n"\
+                "Here are the signature details:\n"\
+                    "Name: " + subject_cn + "\n"
+                    "Issuer: " + issuer_cn + "\n"
+                    "Serial Number: " + serial_number + "\n"
+                    "SHA256 Thumbprint: " + thumbprint + "\n"
+                    "Valid From: " + valid_from + "\n"
+                    "Valid Until: " + valid_until + "\n"
+                    "The malware was tagged as " + tag_string + ".\n"
+                    "\n"
+                    )
+            if user_supplied_tag:
+                print("This malware is known as " + user_supplied_tag + ".\n")
+                tag_string += ", " + user_supplied_tag
+            print(
+                    "MalwareBazaar submitted the file to multiple public sandboxes, the links to the sandbox results are below:\n"
+                    "Sandbox\t / Malware Family\t /  Verdict\t / Analysis URL"
+                    )
+    
+    vendor_intel_dict = json_python_value["data"][0]["vendor_intel"]
     for key, value in vendor_intel_dict.items():
         if key == 'ANY.RUN':
             print(f"{key} \t {value[0]['malware_family']}\t {value[0]['verdict']}\t {value[0]['analysis_url']}")
@@ -305,23 +304,24 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
         elif key == 'VMRay':
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
     
-    db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
-    if user_supplied_tag:
-        data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
-        combined_non_matching_values = 0
+    if json_python_value["data"][0]["code_sign"]:
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
+        if user_supplied_tag:
+            data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
+            combined_non_matching_values = 0
 
-        for entry in data:
-            if entry[0] == issuer_simple_name:
-                if entry[1] > 1:
-                    print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
-            else:
-                combined_non_matching_values += entry[1]
+            for entry in data:
+                if entry[0] == issuer_simple_name:
+                    if entry[1] > 1:
+                        print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
+                else:
+                    combined_non_matching_values += entry[1]
 
-        if combined_non_matching_values > 0:
-            print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
+            if combined_non_matching_values > 0:
+                print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
 
-    print_reporting_instructions(issuer_cn)
-    
+        print_reporting_instructions(issuer_cn)
+        
 
 
 def main():
@@ -342,6 +342,9 @@ def main():
         process_virustotal_data(json_python_value, args.hash, args.tag, args.min)
     else:  # Default to MalwareBazaar
         json_python_value = query_malwarebazaar(args.hash)
+        if json_python_value["query_status"] == "hash_not_found":
+            print("The hash was not found in MalwareBazaar's database.")
+            exit()
         process_malwarebazaar_data(json_python_value, args.hash, args.tag, args.min)
 
     db_manager.close_db(db)
