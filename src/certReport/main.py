@@ -61,7 +61,7 @@ def query_virustotal(filehash):
             print("The file hash was not found in VirusTotal's database.")
             exit()
         else:
-            print("An error occurred while querying VirusTotal. Please try again later.")
+            print("An error occurred while querying VirusTotal: " + str(e))
             exit()
     json_python_value = data_request.json()
     return json_python_value
