@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.1.2"
+version = "3.1.4"
 db, cursor = db_manager.connect_to_db()
 
 
