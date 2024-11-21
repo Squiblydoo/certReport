@@ -1,4 +1,7 @@
 Changelog
+3.1.3
+    Removed unneeded print statements which were resulting in duplicate mention of indicators.
+
 3.1.2
 -   Replaced Entrust email with URL
 -   Restored ability to print report without a certificate. This had been broken at some point.
