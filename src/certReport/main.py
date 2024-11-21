@@ -196,7 +196,6 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
             indicator_array.append(" - The file triggered the following high IDS rules: " )
             for rule in high_ids_rules:
                 indicator_array.append("   - " + rule)
-                print("   - " + rule)
 
     if sigma_analysis_results:
         for rule in json_python_value["data"]["attributes"]["sigma_analysis_results"]:
@@ -206,19 +205,16 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
             indicator_array.append(" - The file triggered the following critical or high Sigma rules: " )
             for rule in critical_high_sigma_rules:
                 indicator_array.append("   - " + rule)
-                print("   - " + rule)
 
     if crowdsourced_yara_results:
         indicator_array.append(" - The file triggered the following YARA rules: " )
         for rule in json_python_value["data"]["attributes"]["crowdsourced_yara_results"]:
             indicator_array.append("   - " + rule["rule_name"] + " from source " + rule["source"])
-            #print("   - " + rule["rule_name"] + " from source " + rule["source"])
 
     if malware_config:
         indicator_array.append(" - VirusTotal extracted configurations for the following malware families: " )
         for family in json_python_value["data"]["attributes"]["malware_config"]["families"]:
             indicator_array.append("   - " + family["family"])
-            #print("   - " + family["family"])
     if indicator_array:
         print("\nThis file was found during our investigation and had the following suspicious indicators:")
         for indicator in indicator_array:
