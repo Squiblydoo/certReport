@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "certReport"
-version = "3.1.4"
+version = "3.2"
 authors = [
   { name="Squiblydoo", email="Squiblydoo@pm.me" },
 ]
 description = "This script supports the reporting of Authenticode Certificates by reducing the effort on individuals to report."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 dependencies = [ "requests>=2.31.0",]
 classifiers = [
     "Programming Language :: Python :: 3",

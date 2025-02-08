@@ -7,9 +7,35 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.1.4"
+version = "3.2.0"
 db, cursor = db_manager.connect_to_db()
+cert_central_api = os.getenv('CERT_CENTRAL_API')
 
+def post_to_public_database(payload):
+    try:
+        cert_central_api = os.getenv('CERT_CENTRAL_API')
+        if cert_central_api == None:
+            raise KeyError
+    except KeyError:
+        print('''API Key is not set. It is available in your provide on Cert Central.
+        Set your Cert Central API key by running the doing the following:
+        On Linux:
+        echo "CERT_CENTRAL_API=your_api_key_here" >> ~/.bashrc
+        source ~/.bashrc
+
+        On Windows:
+        setx CERT_CENTRAL_API "your_api_key"
+
+        On MacOS:
+        echo "export CERT_CENTRAL_API=your_api_key_here" >> ~/.zprofile
+        source ~/.zprofile
+        ''')
+        exit()
+    headers = {"X-API-KEY": cert_central_api}
+    response = requests.post("http://certcentral.org/api/process_hash",headers=headers ,json=payload)
+    response.raise_for_status()
+    response = response.json()
+    print(response["message"])
 
 def create_tag_string(tags):
     if len(tags) == 0:
@@ -79,6 +105,8 @@ def get_issuer_simple_name(issuer_cn):
         return "Sectigo"
     elif "Entrust" in issuer_cn:
         return "Entrust"
+    elif "Microsoft" in issuer_cn:
+        return "Microsoft"
     else:
         return "Unknown"
 
@@ -100,6 +128,8 @@ def print_reporting_instructions(issuer_cn):
         print("This report should be sent to Sectigo: signedmalwarealert@sectigo.com")
     elif "Entrust" in issuer_cn:
         print("This report should be sent to Entrust: https://www.entrust.com/support/certificate-solutions/report-a-problem#form-block")
+    elif "Microsoft" in issuer_cn:
+        print("This report should be sent to Microsoft: centralpki@microsoft.com")
     else:
         print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
 
@@ -239,6 +269,22 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         
     if signature_info:
         print_reporting_instructions(issuer_cn)
+    if malware_config:
+        for family in json_python_value["data"]["attributes"]["malware_config"]["families"]:
+            if user_supplied_tag is None:
+                user_supplied_tag = family["family"]
+    
+    payload = {
+        "hash": filehash,
+        "subject_cn": subject_cn,
+        "issuer_cn": issuer_cn,
+        "serial_number": serial_number,
+        "thumbprint": thumbprint,
+        "valid_from": valid_from,
+        "valid_to": valid_to,
+        "user_tag": user_supplied_tag,
+    }
+    return payload
         
 
 def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, min_report):
@@ -317,6 +363,18 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
                 print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
 
         print_reporting_instructions(issuer_cn)
+
+    payload = {
+        "hash": filehash,
+        "subject_cn": subject_cn,
+        "issuer_cn": issuer_cn,
+        "serial_number": serial_number,
+        "thumbprint": thumbprint,
+        "valid_from": valid_from,
+        "valid_to": valid_until,
+        "user_tag": user_supplied_tag,
+    }
+    return payload
         
 
 
@@ -328,22 +386,42 @@ def main():
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     parser.add_argument('-t', '--tag', help="Tag the malware as a specific family")
     parser.add_argument('-m', '--min', help="Prints a thin report with only the most important information", default=False ,action="store_true")
+    parser.add_argument('-p', '--public', help="Submit the information to the public database", default=False ,action="store_true")
     args = parser.parse_args()
+
+    if not cert_central_api:
+                print('''Please set your certCentral API key by running the doing the following:
+        On Linux:
+        echo "CERT_CENTRAL_API=your_api_key_here" >> ~/.bashrc
+        source ~/.bashrc
+
+        On Windows:
+        setx CERT_CENTRAL_API "your_api_key"
+
+        On MacOS:
+        echo "export CERT_CENTRAL_API=your_api_key_here" >> ~/.zprofile
+        source ~/.zprofile
+        ''')
 
     if not args.hash:
         parser.error("the following arguments are required: --hash")
 
     if args.service == "virustotal" or args.service == "VT":
         json_python_value = query_virustotal(args.hash)
-        process_virustotal_data(json_python_value, args.hash, args.tag, args.min)
+        payload = process_virustotal_data(json_python_value, args.hash, args.tag, args.min)
     else:  # Default to MalwareBazaar
         json_python_value = query_malwarebazaar(args.hash)
         if json_python_value["query_status"] == "hash_not_found":
             print("The hash was not found in MalwareBazaar's database.")
             exit()
-        process_malwarebazaar_data(json_python_value, args.hash, args.tag, args.min)
+        payload = process_malwarebazaar_data(json_python_value, args.hash, args.tag, args.min)
+
+    if args.public:
+        post_to_public_database(payload)
 
     db_manager.close_db(db)
+
+
             
 if __name__=="__main__":
     main()
