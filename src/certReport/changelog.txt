@@ -1,4 +1,8 @@
 Changelog
+3.2.0
+-   Add public reporting capability that uses option "-p"
+-   Added email for reporting Microsoft certificates
+
 3.1.4
 -   Minor tweak to error reporting. Now prints error rather than just giving a generic message.
 
