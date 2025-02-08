@@ -17,6 +17,8 @@ def post_to_public_database(payload):
         if cert_central_api == None:
             raise KeyError
     except KeyError:
+        print('''API Key is not set. It is available in your provide on Cert Central.
+        Set your Cert Central API key by running the doing the following:
         On Linux:
         echo "CERT_CENTRAL_API=your_api_key_here" >> ~/.bashrc
         source ~/.bashrc
@@ -24,6 +26,8 @@ def post_to_public_database(payload):
         On Windows:
         setx CERT_CENTRAL_API "your_api_key"
 
+        On MacOS:
+        echo "export CERT_CENTRAL_API=your_api_key_here" >> ~/.zprofile
         source ~/.zprofile
         ''')
         exit()
@@ -31,6 +35,7 @@ def post_to_public_database(payload):
     response = requests.post("http://certcentral.org/api/process_hash",headers=headers ,json=payload)
     response.raise_for_status()
     response = response.json()
+    print(response["message"])
 
 def create_tag_string(tags):
     if len(tags) == 0:
@@ -100,6 +105,8 @@ def get_issuer_simple_name(issuer_cn):
         return "Sectigo"
     elif "Entrust" in issuer_cn:
         return "Entrust"
+    elif "Microsoft" in issuer_cn:
+        return "Microsoft"
     else:
         return "Unknown"
 
