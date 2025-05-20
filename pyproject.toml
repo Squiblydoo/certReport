@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "certReport"
-version = "3.2"
+version = "3.2.1"
 authors = [
   { name="Squiblydoo", email="Squiblydoo@pm.me" },
 ]
@@ -25,3 +25,15 @@ classifiers = [
 
 [project.scripts]
 certReport = "certReport.main:main"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.2.4",
+]
