@@ -1,7 +1,7 @@
 Changelog
 3.2.1
 -   Fix bug when ran against files that don't have a signature
--   Build out testing to prevent regression
+-   Removed counter from reports.
 
 3.2.0
 -   Add public reporting capability that uses option "-p"

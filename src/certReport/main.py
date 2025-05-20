@@ -250,9 +250,6 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
     if signature_info.get("signers"):
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
         db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
-        if user_supplied_tag:
-            data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
-            combined_non_matching_values = 0
             
 
     if signature_info.get("signers"):
@@ -335,21 +332,9 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
     
     if json_python_value["data"][0]["code_sign"]:
-        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")
-        if user_supplied_tag:
-            data = db_manager.summarize_entries_by_tag(cursor, user_supplied_tag)
-            combined_non_matching_values = 0
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")    
 
-            for entry in data:
-                if entry[0] == issuer_simple_name:
-                    if entry[1] > 1:
-                        print(f"\nWe have reported this same malware to {issuer_simple_name} {entry[1]} times. ", end='')
-                else:
-                    combined_non_matching_values += entry[1]
-
-            if combined_non_matching_values > 0:
-                print(f"We have reported the malware to other providers {combined_non_matching_values} times.")
-
+            
         print_reporting_instructions(issuer_cn)
 
         payload = {

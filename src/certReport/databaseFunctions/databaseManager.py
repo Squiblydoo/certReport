@@ -71,13 +71,3 @@ def check_previous_entry(cursor, SHA256_HASH):
         SELECT * FROM certificates WHERE SHA256_HASH = ?
         ''', (SHA256_HASH,))
     return cursor.fetchone()
-
-
-def summarize_entries_by_tag(cursor, USER_SUPPLIED_TAG):
-    cursor.execute('''
-        SELECT ISSUER_SIMPLE_NAME, COUNT(ISSUER_SIMPLE_NAME) AS num_entries
-        FROM certificates
-        WHERE USER_SUPPLIED_TAG = ?
-        GROUP BY ISSUER_SIMPLE_NAME
-        ''', (USER_SUPPLIED_TAG,))
-    return cursor.fetchall()
