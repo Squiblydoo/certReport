@@ -1,4 +1,7 @@
 Changelog
+3.2.2
+-   Fixed bug when ran against some files without a signature
+
 3.2.1
 -   Fix bug when ran against files that don't have a signature
 -   Removed counter from reports.
