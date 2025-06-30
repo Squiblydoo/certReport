@@ -136,7 +136,7 @@ def print_reporting_instructions(issuer_cn):
 def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_report):
     signature_info = json_python_value.get("data", {}).get("attributes", {}).get("signature_info")
     
-    if signature_info.get("signers"):
+    if signature_info is not None and signature_info.get("signers"):
         signers = signature_info.get("signers", "")
         signer_list = signers.split(";")
         subject_cn = signer_list[0] if len(signer_list) > 0 else "Unknown"
@@ -175,8 +175,8 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
                   "Valid Until: " + valid_to + "\n"
                   )
 
-    if not signature_info.get("signers"):
-        print("This file is not signed. Only printing report.\n---------------------------------")
+    else:
+        print("This file is not signed or is malformed. Only printing report.\n---------------------------------")
 
     stats = json_python_value.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
     tags = json_python_value.get("data", {}).get("attributes", {}).get("tags", [])
@@ -247,18 +247,18 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         for indicator in indicator_array:
             print(indicator)
 
-    if signature_info.get("signers"):
+    if signature_info is not None:
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
         db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
             
 
-    if signature_info.get("signers"):
+    if signature_info is not None:
         print_reporting_instructions(issuer_cn)
     if malware_config:
         for family in malware_config.get("families", []):
             if user_supplied_tag is None:
                 user_supplied_tag = family["family"]
-    if signature_info and signature_info.get("signers"):
+    if signature_info is not None:
         payload = {
             "hash": filehash,
             "subject_cn": subject_cn,
