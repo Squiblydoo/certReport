@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.2.1"
+version = "3.2.3"
 db, cursor = db_manager.connect_to_db()
 cert_central_api = os.getenv('CERT_CENTRAL_API')
 
@@ -48,7 +48,25 @@ def create_tag_string(tags):
         return tag_string
 
 def query_malwarebazaar(filehash):
-    query = {"query": "post-data", "query": "get_info", "hash": filehash}
+    try: 
+        api_key = os.getenv('MB_API_KEY')
+        if api_key == None:
+            raise KeyError
+    except KeyError:
+        print('''Please set your MalwareBazaar API key by running the following:
+        On Linux:
+        echo "MB_API_KEY=your_api_key_here" >> ~/.bashrc
+        source ~/.bashrc
+
+        On Windows:
+        setx MB_API_KEY "your_api_key"
+
+        On MacOS:
+        echo "export MB_API_KEY=your_api_key_here" >> ~/.zprofile
+        source ~/.zprofile
+        ''')
+        exit()
+    query = {"query": "post-data", "query": "get_info", "Auth-Key": api_key, "hash": filehash}
     data_request = requests.post("https://mb-api.abuse.ch/api/v1/", data=query)
     data_request.raise_for_status()
     json_string = data_request.text
