@@ -7,8 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-<<<<<<< Updated upstream
-version = "3.2.1"
+version = "3.2.3"
 db, cursor = db_manager.connect_to_db()
 cert_central_api = os.getenv('CERT_CENTRAL_API')
 
@@ -49,7 +48,6 @@ def create_tag_string(tags):
         return tag_string
 
 def query_malwarebazaar(filehash):
-    query = {"query": "post-data", "query": "get_info", "hash": filehash}
     try: 
         api_key = os.getenv('MB_API_KEY')
         if api_key == None:
