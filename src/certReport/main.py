@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.2.3"
+version = "3.2.3.1"
 db, cursor = db_manager.connect_to_db()
 cert_central_api = os.getenv('CERT_CENTRAL_API')
 
@@ -66,8 +66,9 @@ def query_malwarebazaar(filehash):
         source ~/.zprofile
         ''')
         exit()
-    query = {"query": "post-data", "query": "get_info", "Auth-Key": api_key, "hash": filehash}
-    data_request = requests.post("https://mb-api.abuse.ch/api/v1/", data=query)
+    headers = {"Auth-Key": api_key}
+    query = { "query": "get_info",  "hash": filehash}
+    data_request = requests.post("https://mb-api.abuse.ch/api/v1/", data=query, headers=headers)
     data_request.raise_for_status()
     json_string = data_request.text
     json_python_value = json.loads(json_string)
