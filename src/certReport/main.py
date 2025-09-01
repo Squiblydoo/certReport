@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.3.1"
+version = "3.3.2"
 db, cursor = db_manager.connect_to_db()
 cert_central_api = os.getenv('CERT_CENTRAL_API')
 
@@ -32,7 +32,7 @@ def post_to_public_database(payload):
         ''')
         exit()
     headers = {"X-API-KEY": cert_central_api}
-    response = requests.post("http://certcentral.org/api/process_hash",headers=headers ,json=payload)
+    response = requests.post("http://localhost:5000/api/process_hash",headers=headers ,json=payload)
     response.raise_for_status()
     response = response.json()
     print(response["message"])
@@ -130,6 +130,8 @@ def get_issuer_simple_name(issuer_cn):
         return "Microsoft"
     elif "Apple" in issuer_cn:
         return "Apple"
+    elif "Verokey" in issuer_cn:
+        return "Verokey"
     else:
         return "Unknown"
 
@@ -154,9 +156,11 @@ def print_reporting_instructions(issuer_cn):
     elif "Entrust" in issuer_cn:
         print("This report should be sent to Entrust: https://www.entrust.com/support/certificate-solutions/report-a-problem#form-block")
     elif "Microsoft" in issuer_cn:
-        print("This report should be sent to Microsoft: centralpki@microsoft.com")
+        print("Submit a copy of the file to https://www.microsoft.com/en-us/wdsi/filesubmission and email: centralpki@microsoft.com")
     elif "Apple" in issuer_cn:
         print("This report should be sent to Apple: product-security@apple.com")
+    elif "Verokey" in issuer_cn:
+        print("This report should be sent to Verokey: https://www.ssltrust.com/support")
     else:
         print("Assuming this is a valid certificate. Search the provider's website for the reporting email.")
 
