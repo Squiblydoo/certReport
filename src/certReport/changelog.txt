@@ -1,4 +1,7 @@
 Changelog
+3.4
+- Added Team ID extraction for Apple certificates. Team ID is now in reports and in payload sent to the CertGraveyard
+
 3.3.3.1
 - Update documentation
 

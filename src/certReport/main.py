@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.3.3"
+version = "3.4"
 db, cursor = db_manager.connect_to_db()
 cert_graveyard_api = os.getenv('CERT_GRAVEYARD_API')
 
@@ -166,7 +166,8 @@ def print_reporting_instructions(issuer_cn):
 
 def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_report):
     signature_info = json_python_value.get("data", {}).get("attributes", {}).get("signature_info")
-    
+    team_id = None
+
     if signature_info is not None and signature_info.get("signers"):
         signers = signature_info.get("signers", "")
         signer_list = signers.split(";")
@@ -180,6 +181,10 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         valid_to = signer_details.get("valid to", "Unknown")
 
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
+        team_id = signature_info.get("TeamIdentifier")
+        if team_id and team_id.lower() == "not set":
+            team_id = None
+
         if issuer_simple_name == "Certum":
             min_report = True  # Certum reports are always thin reports due to report length requirements.
 
@@ -192,6 +197,8 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
                   "Thumbprint: " + thumbprint + "\n"
                   "Status: " + cert_status + "\n"
                   )
+            if issuer_simple_name == "Apple" and team_id:
+                print("Team ID: " + team_id)
         else:
             print("\n---------------------------------\nGreetings,\n "
                   "We identified a malware signed with a " + issuer_cn + " certificate. \n"
@@ -205,6 +212,8 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
                   "Valid From: " + valid_from + "\n"
                   "Valid Until: " + valid_to + "\n"
                   )
+            if issuer_simple_name == "Apple" and team_id:
+                print("Team ID: " + team_id)
 
     else:
         print("This file is not signed or is malformed. Only printing report.\n---------------------------------")
@@ -278,18 +287,18 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
         for indicator in indicator_array:
             print(indicator)
 
-    if signature_info is not None:
+    if signature_info is not None and signature_info.get("signers"):
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
-        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal")
-            
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_to, tag_string, "VirusTotal", team_id)
 
-    if signature_info is not None:
+
+    if signature_info is not None and signature_info.get("signers"):
         print_reporting_instructions(issuer_cn)
     if malware_config:
         for family in malware_config.get("families", []):
             if user_supplied_tag is None:
                 user_supplied_tag = family["family"]
-    if signature_info is not None:
+    if signature_info is not None and signature_info.get("signers"):
         payload = {
             "hash": filehash,
             "subject_cn": subject_cn,
@@ -299,11 +308,13 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
             "valid_from": valid_from,
             "valid_to": valid_to,
             "user_tag": user_supplied_tag,
+            "team_id": team_id,
         }
         return payload
         
 
 def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, min_report):
+    team_id = None
     if json_python_value["data"][0]["code_sign"]:
         subject_cn = json_python_value["data"][0]["code_sign"][0]["subject_cn"]
         issuer_cn = json_python_value["data"][0]["code_sign"][0]["issuer_cn"]
@@ -315,6 +326,7 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
         tags = json_python_value["data"][0]["tags"]
         tag_string = create_tag_string(tags)
 
+        team_id = json_python_value["data"][0]["code_sign"][0].get("subject_ou")
         issuer_simple_name = get_issuer_simple_name(issuer_cn)
         if issuer_simple_name == "Certum":
             min_report = True # Certum reports are always thin reports due to report length requirements.
@@ -329,6 +341,8 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
                     "SHA256 Thumbprint: " + thumbprint + "\n"
                     "\n"
                     )
+            if issuer_simple_name == "Apple" and team_id:
+                print("Team ID: " + team_id)
         else:
             print("\n---------------------------------\nGreetings,\n "
                 "We identified a malware signed with a " + issuer_cn + " certificate. \n" 
@@ -343,6 +357,8 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
                     "The malware was tagged as " + tag_string + ".\n"
                     "\n"
                     )
+            if issuer_simple_name == "Apple" and team_id:
+                print("Team ID: " + team_id)
             if user_supplied_tag:
                 print("This malware is known as " + user_supplied_tag + ".\n")
                 tag_string += ", " + user_supplied_tag
@@ -363,7 +379,7 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
             print(f"{key} \t {value['malware_family']} \t {value['verdict']} \t {value['report_link']} ")
     
     if json_python_value["data"][0]["code_sign"]:
-        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar")    
+        db_manager.insert_into_db(db, cursor, filehash, user_supplied_tag, subject_cn, issuer_cn, issuer_simple_name, serial_number, thumbprint, valid_from, valid_until, tag_string, "MalwareBazaar", team_id)    
 
             
         print_reporting_instructions(issuer_cn)
@@ -377,6 +393,7 @@ def process_malwarebazaar_data(json_python_value, filehash, user_supplied_tag, m
             "valid_from": valid_from,
             "valid_to": valid_until,
             "user_tag": user_supplied_tag,
+            "team_id": team_id,
         }
         return payload
         
