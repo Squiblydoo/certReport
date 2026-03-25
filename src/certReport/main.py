@@ -7,7 +7,7 @@ import sqlite3
 import certReport.databaseFunctions.databaseManager as db_manager
 from pathlib import Path
 
-version = "3.4"
+version = "3.4.1"
 db, cursor = db_manager.connect_to_db()
 cert_graveyard_api = os.getenv('CERT_GRAVEYARD_API')
 
@@ -144,7 +144,7 @@ def print_reporting_instructions(issuer_cn):
     if "SSL.com" in issuer_cn:
         print("This report should be sent to SSL.com: https://ssl.com/revoke")
     elif "GoGetSSL" in issuer_cn:
-        print("This report should be sent to GoGetSSL: support@gogetssl.com")
+        print("GoGetSSL is a DigiCert brand and should be sent to DigiCert: Revoke@digicert.com")
     elif "Certum" in issuer_cn:
         print("This report should be sent to Certum PL: https://problemreport.certum.pl/")
     elif "DigiCert" in issuer_cn:
@@ -189,8 +189,8 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
             min_report = True  # Certum reports are always thin reports due to report length requirements.
 
         if min_report:
-            print("\n---------------------------------\nGreetings,\n "
-                  "The following malware is signed by a " + issuer_simple_name + " subscriber: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"
+            print("\n---------------------------------\nGreetings,\n"
+                  "The following malware is signed by a" + issuer_simple_name + " subscriber: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"
                   "Name: " + subject_cn + "\n"
                   "Issuer: " + issuer_cn + "\n"
                   "Serial Number: " + serial_number + "\n"
@@ -200,8 +200,8 @@ def process_virustotal_data(json_python_value, filehash, user_supplied_tag, min_
             if issuer_simple_name == "Apple" and team_id:
                 print("Team ID: " + team_id)
         else:
-            print("\n---------------------------------\nGreetings,\n "
-                  "We identified a malware signed with a " + issuer_cn + " certificate. \n"
+            print("\n---------------------------------\nGreetings,\n"
+                  "We identified malware signed with a" + issuer_cn + " certificate. \n"
                   "The malware sample is available on VirusTotal here: https://www.virustotal.com/gui/file/" + filehash + "/detection\n\n"
                   "Here are the signature details:\n"
                   "Name: " + subject_cn + "\n"

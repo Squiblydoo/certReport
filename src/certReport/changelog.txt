@@ -1,4 +1,8 @@
 Changelog
+3.4.1
+- Changed GoGetSSL reporting address
+- Small report changes such as spacing
+
 3.4
 - Added Team ID extraction for Apple certificates. Team ID is now in reports and in payload sent to the CertGraveyard
 
